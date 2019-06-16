@@ -96,6 +96,11 @@ class WBSpider():
                     time.sleep(random.randint(6, 10))
                     page1 = page
                     random_pages = random.randint(1, 5)
+            self.write_txt(wrote_num)  # 将剩余不足20页的微博写入文件
+            if not self.filter:
+                print(u"共爬取" + str(self.got_num) + u"条微博")
+            else:
+                print(u"共爬取" + str(self.got_num) + u"条原创微博")
 
         except Exception as e:
             print("Error: ", e)
@@ -118,7 +123,6 @@ class WBSpider():
                                  str(userInfo["followers_count"]) + result_header)
                 temp_result.append(result_header)
             for i, w in enumerate(self.all_cards[wrote_num:]):
-                print(w)
                 w = w["mblog"]
                 temp_result.append(
                     str(wrote_num + i + 1) + ":" + w["text"] + "\n" +
@@ -159,10 +163,15 @@ class WBSpider():
             print("Error: ", e)
             traceback.print_exc()
 
-if __name__ == "__main__":
+def spide(user_id=1669879400):
+    """
+    user_id 可以改成任意合法的用户id（爬虫的微博id除外）
+    """
     # 使用实例,输入一个用户id，所有信息都会存储在wb实例中
-    user_id = 1669879400  # 可以改成任意合法的用户id（爬虫的微博id除外）
     filter = 0  # 值为0表示爬取全部微博（原创微博+转发微博），值为1表示只爬取原创微博
     pic_download = 0  # 值为0代表不下载微博原始图片,1代表下载微博原始图片
     wb = WBSpider(user_id, filter, pic_download)  # 调用Weibo类，创建微博实例wb
     wb.start()  # 爬取微博信息
+
+if __name__ == "__main__":
+    spide(user_id=7195559573)
