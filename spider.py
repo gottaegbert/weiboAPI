@@ -4,7 +4,29 @@ from lxml import etree
 
 INFO_URL = 'https://m.weibo.cn/api/container/getIndex?type=uid&value={}'
 WEIBO_URL = 'https://m.weibo.cn/api/container/getIndex?type=uid&value={}&containerid={}&page={}'
+LONG_WEIBO_URL = 'https://m.weibo.cn/statuses/extend?id={}'
 
+# See https://osf.io/upav8/
+# Line by line https://github.com/rkern/line_profiler
+import cProfile, pstats, io
+def profile(fnc):
+    
+    """A decorator that uses cProfile to profile a function"""
+    
+    def inner(*args, **kwargs):
+        
+        pr = cProfile.Profile()
+        pr.enable()
+        retval = fnc(*args, **kwargs)
+        pr.disable()
+        s = io.StringIO()
+        sortby = 'cumulative'
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        print(s.getvalue())
+        return retval
+
+    return inner
 
 class WBSpider():
     def __init__(self, user_id, filter=0, pic_download=0):
@@ -28,10 +50,13 @@ class WBSpider():
     def request_data(self, url):
         try:
             data = requests.get(url, headers=settings.DEFAULT_REQUEST_HEADERS).json()
-            assert data["ok"] == 1
+            # assert data["ok"] == 1
+            # 有时候会得到：
+            # {'ok': 0, 'msg': '这里还没有内容', 'data': {'cards': []}}
             return data["data"]
         except Exception as e:
             print("Error: ", e)
+            print(f"data: {data}")
             traceback.print_exc()
 
     def save_json(self, data, type='userinfo.json'):
@@ -39,6 +64,7 @@ class WBSpider():
         with open(json_path, 'w', encoding='utf-8') as outfile:
             json.dump(data, outfile, ensure_ascii=False, indent=2)
 
+    @profile
     def start(self):
         """运行爬虫"""
         try:
@@ -74,16 +100,27 @@ class WBSpider():
             self.save_json(data, type='cards1.json')
 
             page1  = 0
-            random_pages = random.randint(1, 5)
+            random_pages = random.randint(1, 100)
             wrote_num = 0
             for i in tqdm.tqdm(range(self.total_pages), desc=u"进度"):
                 page = i+1
                 url = WEIBO_URL.format(self.user_id, self.weobo_containerid, page)
                 data = self.request_data(url)
+                for card in data['cards']:
+                    mblog = card["mblog"]
+                    selector = etree.HTML(mblog["text"])
+                    a_text = selector.xpath("//a/text()")
+                    if u"全文" in a_text:
+                        mblog["text"] = self.get_long_weibo(mblog["mid"])
+                        selector = etree.HTML(mblog["text"])
+                    # 将 HTML 转换为 txt
+                    # 参考 https://www.zybuluo.com/Alston/note/778377
+                    mblog["img_emoji"] = selector.xpath("//span/img/@alt")
+                    mblog["text"] = etree.tostring(selector, method="text", encoding="UTF-8").decode('utf-8')
                 self.all_cards += data['cards']
                 self.got_num += len(data['cards'])
 
-                if page % 2 == 0:  # 每爬20页写入一次文件
+                if page % 20 == 0:  # 每爬20页写入一次文件
                     # 写文件
                     if self.got_num > wrote_num:
                         self.write_txt(wrote_num)
@@ -106,6 +143,16 @@ class WBSpider():
             print("Error: ", e)
             traceback.print_exc()
 
+    def get_long_weibo(self, mid):
+        """获取长微博"""
+        try:
+            url = LONG_WEIBO_URL.format(mid)
+            long_content = self.request_data(url)["longTextContent"]
+            return long_content
+        except Exception as e:
+            print("Error: ", e)
+            traceback.print_exc()
+
     def write_txt(self, wrote_num):
         """将爬取的信息写入txt文件"""
         try:
@@ -122,15 +169,17 @@ class WBSpider():
                                  str(userInfo["follow_count"]) + u"\n粉丝数: " +
                                  str(userInfo["followers_count"]) + result_header)
                 temp_result.append(result_header)
+            assert self.got_num == len(self.all_cards)
             for i, w in enumerate(self.all_cards[wrote_num:]):
                 w = w["mblog"]
                 temp_result.append(
                     str(wrote_num + i + 1) + ":" + w["text"] + "\n" +
-                    u"发布时间: " +
-                    w["created_at"] + "\n" + u"点赞数: " + str(w["attitudes_count"]) +
-                    u"   转发数: " + str(w["reposts_count"]) + u"   评论数: " +
-                    str(w["reposts_count"]) + "\n" + u"发布工具: " +
-                    w["source"] + "\n\n")
+                    u"包含图片表情：" + str(w["img_emoji"]) + "\n" +
+                    u"发布时间: " + w["created_at"] + "\n" + 
+                    u"点赞数: " + str(w["attitudes_count"]) +
+                    u"   转发数: " + str(w["reposts_count"]) + 
+                    u"   评论数: " + str(w["reposts_count"]) + "\n" + 
+                    u"发布工具: " + w["source"] + "\n\n")
             result = "".join(temp_result)
             with open(self.get_filepath("txt"), "ab") as f:
                 f.write(result.encode(sys.stdout.encoding))
@@ -174,4 +223,6 @@ def spide(user_id=1669879400):
     wb.start()  # 爬取微博信息
 
 if __name__ == "__main__":
-    spide(user_id=7195559573)
+    # spide()
+    spide(user_id=5973737418)
+    # spide(user_id=7195559573)
