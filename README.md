@@ -16,3 +16,17 @@
     );
 </script>
 ```
+
+## Spider
+
+修复[输出重定向错误](http://blog.mathieu-leplatre.info/python-utf-8-print-fails-when-redirecting-stdout.html)：
+
+```pwsh
+$env:PYTHONIOENCODING = "utf_8"
+```
+
+运行（无需 Cookie）：
+
+```pwsh
+python.exe .\spider.py
+```
