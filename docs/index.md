@@ -2,7 +2,7 @@
 
 搜集微博 API，详情请见下面的示例。
 
-<script src='https://cdn.jsdelivr.net/gh/upupming/weiboAPI@854202d803c5f8aa707d70f099e83390c4792764/response.js'></script>
+<script src='https://cdn.jsdelivr.net/gh/upupming/weiboAPI@a5de545b607837d4c2793eb6e6e085ea9d361807/response.js'></script>
 
 ## userInfo
 
@@ -34,12 +34,12 @@
 
 `https://m.weibo.cn/statuses/extend?id=4383487819465288`
 
-<div id="status1"></div>
+<div id="status1dd"></div>
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/renderjson@1.4.0/renderjson.js"></script>
 <script>
     renderjson.set_show_to_level(2);
-    document.getElementById("status1").appendChild(
-        renderjson(status1)
+    document.getElementById("status1dd").appendChild(
+        renderjson(statuses1)
     );
 </script>
 
@@ -60,11 +60,11 @@
 
 `https://m.weibo.cn/api/comments/show?id=4383183661430868&page=1`
 
-<div id="comments1"></div>
+<div id="comments1dd"></div>
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/renderjson@1.4.0/renderjson.js"></script>
 <script>
     renderjson.set_show_to_level(2);
-    document.getElementById("comments1").appendChild(
+    document.getElementById("comments1dd").appendChild(
         renderjson(comments1)
     );
 </script>
@@ -73,11 +73,12 @@
 
 `https://m.weibo.cn/comments/hotflow?id=4383183661430868&mid=4383183661430868&max_id_type=0`
 
-<div id="comments2"></div>
+<div id="comments2dd"></div>
+
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/renderjson@1.4.0/renderjson.js"></script>
 <script>
     renderjson.set_show_to_level(2);
-    document.getElementById("comments2").appendChild(
+    document.getElementById("comments2dd").appendChild(
         renderjson(comments2)
     );
 </script>
