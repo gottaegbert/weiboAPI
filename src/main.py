@@ -68,96 +68,105 @@ class WBSpider():
         返回此用户的所有 following 的 (uid, uname)（字典）
         """
         # 特殊情况，是从 1 开始索引的
-        result = []
-        cur_page = 1
-        while True:
-            logging.info(f'正在爬取 {uid} 的第 {cur_page} 页的 following')
-            # https://m.weibo.cn/api/container/getIndex?containerid=231051_-_followers_-_1669879400&page=0
-            url = FOLLOWING_URL.format(uid, cur_page)
-            data = self.get_data(url)
-            if len(data['data']['cards']) == 0:
-                logging.info(f'用户 {uid} 的 following 爬取完毕')
-                return
-            
-            for card in data['data']['cards']:
-                for card_group_item in card['card_group']:
-                    # 只有类型为 10 才是真正的关注列表
-                    if card_group_item['card_type'] != 10:
-                        continue
-                    result.append({'uid': card_group_item['user']['id'], 'uname': card_group_item['user']['screen_name']})
-        logging.info(f'将新增加 {len(result)} 个 following 到队列中')
-        return result
-                    
+        try:
+            result = []
+            cur_page = 1
+            while True:
+                logging.info(f'正在爬取 {uid} 的第 {cur_page} 页的 following')
+                # https://m.weibo.cn/api/container/getIndex?containerid=231051_-_followers_-_1669879400&page=0
+                url = FOLLOWING_URL.format(uid, cur_page)
+                data = self.get_data(url)
+                if len(data['data']['cards']) == 0:
+                    logging.info(f'用户 {uid} 的 following 爬取完毕')
+                    return
+                
+                for card in data['data']['cards']:
+                    for card_group_item in card['card_group']:
+                        # 只有类型为 10 才是真正的关注列表
+                        if card_group_item['card_type'] != 10:
+                            continue
+                        result.append({'uid': card_group_item['user']['id'], 'uname': card_group_item['user']['screen_name']})
+            logging.info(f'将新增加 {len(result)} 个 following 到队列中')
+            return result
+        except:
+            return []
         
     def get_weibo_containerid(self, uid):
-        # https://m.weibo.cn/api/container/getIndex?type=uid&value=1669879400
-        url = INFO_URL.format(uid)
-        data = self.get_data(url)
-        return data['data']['tabsInfo']['tabs'][1]['containerid'] 
+        try:
+            # https://m.weibo.cn/api/container/getIndex?type=uid&value=1669879400
+            url = INFO_URL.format(uid)
+            data = self.get_data(url)
+            return data['data']['tabsInfo']['tabs'][1]['containerid'] 
+        except:
+            print(data)
     def crawl_user_weibo(self, uid):
         """
         将所有的微博爬取到，并存储到 Weibo 表中
         """
-        containerid = self.get_weibo_containerid(uid)
-        cur_page = 0
-        while True:
-            logging.info(f'正在爬取 {uid} 的第 {cur_page+1} 页微博')
-            # https://m.weibo.cn/api/container/getIndex?containerid=1076031669879400&page=0
-            url = WEIBO_URL.format(containerid, cur_page)
-            data = self.get_data(url)
-            if len(data['data']['cards']) == 0:
-                logging.info(f'用户 {uid} 爬取完毕')
-                return
+        try:
+            containerid = self.get_weibo_containerid(uid)
+            cur_page = 0
+            while True:
+                logging.info(f'正在爬取 {uid} 的第 {cur_page+1} 页微博')
+                # https://m.weibo.cn/api/container/getIndex?containerid=1076031669879400&page=0
+                url = WEIBO_URL.format(containerid, cur_page)
+                data = self.get_data(url)
+                if len(data['data']['cards']) == 0:
+                    logging.info(f'用户 {uid} 爬取完毕')
+                    return
 
-            for card in data['data']['cards']:
-                # 忽略广告等其他卡片
-                if card["card_type"] != 9:
-                    continue
-                mblog = card["mblog"]
-                # 如果是转发微博的话，忽略
-                if "retweeted_status" in mblog:
-                    continue
+                for card in data['data']['cards']:
+                    # 忽略广告等其他卡片
+                    if card["card_type"] != 9:
+                        continue
+                    mblog = card["mblog"]
+                    # 如果是转发微博的话，忽略
+                    if "retweeted_status" in mblog:
+                        continue
+                    
+                    selector = etree.HTML(mblog["text"])
+                    a_text = selector.xpath("//a/text()")
+                    # 将 HTML 转换为 txt
+                    # 参考 https://www.zybuluo.com/Alston/note/778377
+                    text = etree.tostring(selector, method="text", encoding="UTF-8").decode('utf-8')
+                    img_emoji = selector.xpath("//span/img/@alt")
+                    
+                    weibo = Weibo(text=text, mid=mblog['mid'], img_emoji=img_emoji)
+                    weibo.save()
                 
-                selector = etree.HTML(mblog["text"])
-                a_text = selector.xpath("//a/text()")
-                # 将 HTML 转换为 txt
-                # 参考 https://www.zybuluo.com/Alston/note/778377
-                text = etree.tostring(selector, method="text", encoding="UTF-8").decode('utf-8')
-                img_emoji = selector.xpath("//span/img/@alt")
-                
-                weibo = Weibo(text=text, mid=mblog['mid'], img_emoji=img_emoji)
-                weibo.save()
-            
-            # 抓取评论
-            self.crawl_weibo_comments(mblog['mid'])
+                # 抓取评论
+                self.crawl_weibo_comments(mblog['mid'])
 
-            cur_page += 1
-            
+                cur_page += 1
+        except:
+            print(data)
         
     def crawl_weibo_comments(self, mid, max=10):
         """
         将某一篇微博的评论爬取 200 篇，并存储到 Comment 表中，将 mid（博文唯一标识）设置为传入的 mid
         """
-        cur_page = 0
-        for i in range(max):
-            logging.info(f'正在抓取 {mid} 的第 {cur_page+1} 页评论')
-            # https://m.weibo.cn/api/comments/show?id=4384122253963002&page=0
-            url = COMMENT_URL.format(mid, cur_page)
-            data = self.get_data(url)
-            if data['msg'] == '暂无数据':
-                break
-            for comment in data['data']['data']:
-                selector = etree.HTML(comment["text"])
-                cid = comment["id"]
-                text = etree.tostring(selector, method="text", encoding="UTF-8").decode('utf-8')
-                img_emoji = selector.xpath("//span/img/@alt")
-                
-                comment = Comment(cid=cid, mid=mid, text=text, img_emoji=img_emoji)
-                comment.save()
+        try:
+            cur_page = 0
+            for i in range(max):
+                logging.info(f'正在抓取 {mid} 的第 {cur_page+1} 页评论')
+                # https://m.weibo.cn/api/comments/show?id=4384122253963002&page=0
+                url = COMMENT_URL.format(mid, cur_page)
+                data = self.get_data(url)
+                if data['msg'] == '暂无数据':
+                    break
+                for comment in data['data']['data']:
+                    selector = etree.HTML(comment["text"])
+                    cid = comment["id"]
+                    text = etree.tostring(selector, method="text", encoding="UTF-8").decode('utf-8')
+                    img_emoji = selector.xpath("//span/img/@alt")
+                    
+                    comment = Comment(cid=cid, mid=mid, text=text, img_emoji=img_emoji)
+                    comment.save()
 
-            cur_page += 1
-        logging.info(f'微博 {mid} 爬取完毕')
-        return
+                cur_page += 1
+            logging.info(f'微博 {mid} 爬取完毕')
+        except:
+            print(data)
 
     def crawl(self, uid):
         """
