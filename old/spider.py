@@ -28,7 +28,7 @@ current_user_index = 0
 # 微博评论貌似有反爬机制，因此使用『无头浏览器』，模仿 Chrome 浏览器
 # 比如这个请求在 Chrome 就 okay，但是用普通的 request 就会返回登陆的 html：
 # https://m.weibo.cn/comments/hotflow?id=1669879400&mid=4384122253963002&max_id_type=0&max_id=261294286701954
-# 最后发现其实是需要 Cookie，我在 Chrome Driver 里面登录来获取 Cookie
+# 最后发现其实是需要 Cookie，我在 Chrome Driver 里面登录来获取 Cookie（第二页以及以后的均需要 Cookie）
 # selenium 的使用参考文档 https://selenium-python.readthedocs.io
 driver = webdriver.Chrome(settings.CHROME_DRIVER_PATH)
 logged = False
