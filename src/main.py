@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*
 
-import os, logging, time
+import os, logging, time, signal, sys
 from util.table import *
 from util.Bmob import *
 from collections import deque
@@ -19,7 +19,7 @@ FOLLOWING_URL = 'https://m.weibo.cn/api/container/getIndex?containerid=231051_-_
 
 class WBSpider():
 
-    def init_logging(name='testname', log_level=logging.INFO):
+    def init_logging(self, name='crawling', log_level=logging.INFO):
         file_dir = os.path.dirname(os.path.realpath('__file__')) + "/log"
         # 没有目录的时候自动创建
         if not os.path.isdir(file_dir):
@@ -59,8 +59,8 @@ class WBSpider():
         self.init_session()
     
     def get_data(self, url):
-        # 每次请求之前等待 0.5 秒，防止因为速度过快被封
-        time.sleep(0.5)
+        # 每次请求之前等待 3 秒，防止因为速度过快被封
+        time.sleep(3)
         return self.session.get(url).json()
     
     def crawl_user_following(self, uid):
@@ -183,10 +183,27 @@ class WBSpider():
         # 理论上会结束，实际上并不会结束
         while len(self.crawling) > 0:
             crawling_user = self.crawling.popleft()
-            for v in self.crawl(crawling_user.uid):
-                self.crawling.append(Crawling(uid=v.uid, uname=v.uname))
-            self.crawled.append(Crawled(crawling_user.uid, crawling_user.uname))
+            adj_arr = self.crawl(crawling_user.uid)
+            crawling_user.delete()
+            logging.info(f'{crawling_user.uid}-{crawling_user.uname} 已从 Crawling 队列和数据库中移除')
+            crawled_new = Crawled(crawling_user.uid, crawling_user.uname)
+            crawled_new.save()
+            self.crawled.append(crawled_new)
+            logging.info(f'{crawling_user.uid}-{crawling_user.uname} 已加入到 Crawled 队列和数据库中')
+            # 是 Following，并且没有被抓取过
+            for v in adj_arr:
+                if Crawled().query().w_eq('uid', v.uid).count() == 0:
+                    crawling_user_new = Crawling(uid=v.uid, uname=v.uname)
+                    crawling_user_new.save()
+                    self.crawling.append(crawling_user_new)
+                    logging.info(f'{v.uid}-{v.uname} 已加入到 Crawling 队列和数据库中')
+
         
+def signal_handler(sig, frame):
+    print('You pressed Ctrl+C!')
+    sys.exit(0)
 if __name__ == "__main__":    
+    signal.signal(signal.SIGINT, signal_handler)
+    
     spider = WBSpider()
     spider.startBFS()
