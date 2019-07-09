@@ -110,7 +110,7 @@ class WBSpider():
                 data = self.get_data(url)
                 if len(data['data']['cards']) == 0:
                     logging.info(f'用户 {uid} 的 following 爬取完毕')
-                    return
+                    return result
                 
                 for card in data['data']['cards']:
                     for card_group_item in card['card_group']:
