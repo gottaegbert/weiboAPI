@@ -100,7 +100,6 @@ class WBSpider():
         """
         返回此用户的所有 following 的 (uid, uname)（字典）
         """
-        # 特殊情况，是从 1 开始索引的
         try:
             result = []
             cur_page = 1
@@ -145,7 +144,7 @@ class WBSpider():
             containerid = self.get_weibo_containerid(uid)
             cur_page = 1
             while True:
-                logging.info(f'正在爬取 {uid} 的第 {cur_page+1} 页微博')
+                logging.info(f'正在爬取 {uid} 的第 {cur_page} 页微博')
                 # https://m.weibo.cn/api/container/getIndex?containerid=1076031669879400&page=0
                 url = WEIBO_URL.format(containerid, cur_page)
                 data = self.get_data(url)
@@ -185,7 +184,6 @@ class WBSpider():
         """
         将某一篇微博的评论爬取 10 页，并存储到 Comment 表中，将 mid（博文唯一标识）设置为传入的 mid
         """
-        # 特殊情况，是从 1 开始索引的
         try:
             cur_page = 1
             for i in range(max):
