@@ -86,6 +86,7 @@ class WBSpider():
                         if card_group_item['card_type'] != 10:
                             continue
                         result.append({'uid': card_group_item['user']['id'], 'uname': card_group_item['user']['screen_name']})
+                cur_page += 1
             logging.info(f'将新增加 {len(result)} 个 following 到队列中')
             return result
         except:
@@ -134,8 +135,8 @@ class WBSpider():
                     weibo = Weibo(text=text, mid=mblog['mid'], img_emoji=img_emoji)
                     weibo.save()
                 
-                # 抓取评论
-                self.crawl_weibo_comments(mblog['mid'])
+                    # 抓取评论
+                    self.crawl_weibo_comments(mblog['mid'])
 
                 cur_page += 1
         except:
@@ -143,7 +144,7 @@ class WBSpider():
         
     def crawl_weibo_comments(self, mid, max=10):
         """
-        将某一篇微博的评论爬取 200 篇，并存储到 Comment 表中，将 mid（博文唯一标识）设置为传入的 mid
+        将某一篇微博的评论爬取 10 页，并存储到 Comment 表中，将 mid（博文唯一标识）设置为传入的 mid
         """
         try:
             cur_page = 0
