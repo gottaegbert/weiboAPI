@@ -48,14 +48,18 @@ class WBSpider():
         self.MYCURSOR.execute(f"DELETE FROM {table} WHERE {key} = '{value}'")
         self.MYDB.commit()
     def ins_to_table(self, table, data_dict):
-        columns = ', '.join(data_dict.keys())
-        placeholders = ', '.join(['%s'] * len(data_dict))
-        sql = "INSERT INTO %s ( %s ) VALUES ( %s )" % (table, columns, placeholders)
-        for key in data_dict.keys():
-            if isinstance(data_dict[key], list):
-                data_dict[key] = json.dumps(data_dict[key])
-        self.MYCURSOR.execute(sql, list(data_dict.values()))
-        self.MYDB.commit()
+        try:
+            columns = ', '.join(data_dict.keys())
+            placeholders = ', '.join(['%s'] * len(data_dict))
+            sql = "INSERT INTO %s ( %s ) VALUES ( %s )" % (table, columns, placeholders)
+            for key in data_dict.keys():
+                if isinstance(data_dict[key], list):
+                    data_dict[key] = json.dumps(data_dict[key])
+            self.MYCURSOR.execute(sql, list(data_dict.values()))
+            self.MYDB.commit()
+        except mysql.connector.errors.IntegrityError as e:
+            # 遇到重复插入直接跳过
+            pass
 
     def init_crawl(self):
         # 待爬取队列，采用广度优先搜索
