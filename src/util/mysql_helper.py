@@ -17,7 +17,7 @@ def create_table_if_not_exists():
     # Crawling
     MYCURSOR.execute("""
         create table if not exists Crawling (
-            uid int not null unique,
+            uid varchar(255) not null unique,
             uname varchar
             (255) CHARACTER SET utf8mb4 collate utf8mb4_unicode_520_ci,
             primary key (uid)
@@ -32,7 +32,7 @@ def create_table_if_not_exists():
     # Crawled
     MYCURSOR.execute("""
         create table if not exists Crawled (
-            uid int not null unique,
+            uid varchar(255) not null unique,
             uname varchar
             (255) CHARACTER SET utf8mb4 collate utf8mb4_unicode_520_ci,
             primary key (uid)
