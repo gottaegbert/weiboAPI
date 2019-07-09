@@ -92,7 +92,7 @@ class WBSpider():
         if 'msg' in res.keys() and res['msg'] == '请求过于频繁,歇歇吧':
             logging.warning(f"当前请求过于频繁，等待 {config['crawl']['FORBID_PAUSE']} 秒")
             time.sleep(config['crawl']['FORBID_PAUSE'])
-            logging.warning(f'等待完毕，重新请求')
+            logging.warnng(f'等待完毕，重新请求')
             return get_data(url)
         return res
     
@@ -219,7 +219,7 @@ class WBSpider():
 
     def startBFS(self):
         """
-        开始爬取（BFS 搜索）
+        开始爬取（广度优先搜索）
         """
         # 理论上会结束，实际上并不会结束
         while len(self.crawling) > 0:

@@ -27,7 +27,7 @@ def create_table_if_not_exists():
     myresult = MYCURSOR.fetchall()
     # 当前没有正在抓取的用户，就初始化一下
     if len(myresult) == 0:
-        MYCURSOR.execute('insert into Crawling (uid, uname) values (%s, %s)', ('1669879400', 'Dear-迪丽热巴'))
+        MYCURSOR.execute('insert into Crawling (uid, uname) values (%s, %s)', (config['crawl']['START_USER'], None))
         MYDB.commit()
     # Crawled
     MYCURSOR.execute("""
