@@ -168,7 +168,7 @@ class WBSpider():
                     text = etree.tostring(selector, method="text", encoding="UTF-8").decode('utf-8')
                     img_emoji = selector.xpath("//span/img/@alt")
                     
-                    weibo = {'text': text, 'mid': mblog['mid'], 'img_emoji': img_emoji}
+                    weibo = {'uid': uid, 'text': text, 'mid': mblog['mid'], 'img_emoji': img_emoji}
                     self.ins_to_table('Weibo', weibo)
                 
                     # 抓取评论
