@@ -135,7 +135,7 @@ class WBSpider():
         except:
             logging.error('containerid 抓取出错')
             logging.error(traceback.format_exc())
-            print(data)
+            logging.error(data)
     def crawl_user_weibo(self, uid):
         """
         将所有的微博爬取到，并存储到 Weibo 表中
@@ -178,7 +178,7 @@ class WBSpider():
         except:
             logging.error('微博抓取出错')
             logging.error(traceback.format_exc())
-            print(data)
+            logging.error(data)
         
     def crawl_weibo_comments(self, mid, max=10):
         """
@@ -207,7 +207,7 @@ class WBSpider():
         except:
             logging.error('评论抓取出错')
             logging.error(traceback.format_exc())
-            print(data)
+            logging.error(data)
 
     def crawl(self, uid):
         """
