@@ -1,12 +1,9 @@
 # -*- coding: UTF-8 -*
 
-import os, logging, time, signal, sys
-from util.table import *
-from util.Bmob import *
+import os, logging, time, signal, sys, requests, traceback, json
+from util.mysql_helper import *
 from collections import deque
 from lxml import etree
-
-BmobSDK.setup(config["bmob"]["APP_ID"], config["bmob"]["REST_API_KEY"])
 
 # 用来获取 containerid
 INFO_URL = 'https://m.weibo.cn/api/container/getIndex?type=uid&value={}'
@@ -37,10 +34,33 @@ class WBSpider():
 
         return fileh
 
-    def init_crawl_from_bmob(self):
+    def fetch_table(self, table='Crawling'):
+        self.MYCURSOR.execute(f'SELECT * FROM {table}')
+        columns = [col[0] for col in self.MYCURSOR.description]
+        return [dict(zip(columns, row)) for row in self.MYCURSOR.fetchall()]
+    
+    def sel_from_table(self, table, key, value):
+        self.MYCURSOR.execute(f"SELECT * FROM {table} WHERE {key} = '{value}'")
+        columns = [col[0] for col in self.MYCURSOR.description]
+        return [dict(zip(columns, row)) for row in self.MYCURSOR.fetchall()]
+        
+    def del_from_table(self, table, key, value):
+        self.MYCURSOR.execute(f"DELETE FROM {table} WHERE {key} = '{value}'")
+        self.MYDB.commit()
+    def ins_to_table(self, table, data_dict):
+        columns = ', '.join(data_dict.keys())
+        placeholders = ', '.join(['%s'] * len(data_dict))
+        sql = "INSERT INTO %s ( %s ) VALUES ( %s )" % (table, columns, placeholders)
+        for key in data_dict.keys():
+            if isinstance(data_dict[key], list):
+                data_dict[key] = json.dumps(data_dict[key])
+        self.MYCURSOR.execute(sql, list(data_dict.values()))
+        self.MYDB.commit()
+
+    def init_crawl(self):
         # 待爬取队列，采用广度优先搜索
-        self.crawling = deque(Crawling().query().exec_query())
-        self.crawled = deque(Crawled().query().exec_query())
+        self.crawling = deque(self.fetch_table())
+        self.crawled = deque(self.fetch_table('Crawled'))
     def save_crawl_to_bmob(self):
         for crawling_item in self.crawling:
             crawling_item.save()
@@ -53,9 +73,16 @@ class WBSpider():
         # https://blog.csdn.net/mgxcool/article/details/52663382
         requests.utils.add_dict_to_cookiejar(self.session.cookies, cookies_dict)
 
+    def init_mysql(self):
+        create_db_if_not_exists()
+        (self.MYDB, self.MYCURSOR) = create_table_if_not_exists()
+
     def __init__(self):
         self.init_logging()
-        self.init_crawl_from_bmob()
+        logging.info('正在初始化数据库...')
+        self.init_mysql()
+        logging.info('正在初始化爬取队列...')
+        self.init_crawl()
         self.init_session()
     
     def get_data(self, url):
@@ -90,6 +117,8 @@ class WBSpider():
             logging.info(f'将新增加 {len(result)} 个 following 到队列中')
             return result
         except:
+            logging.error('following 抓取出错')
+            logging.error(traceback.format_exc())
             return []
         
     def get_weibo_containerid(self, uid):
@@ -99,6 +128,8 @@ class WBSpider():
             data = self.get_data(url)
             return data['data']['tabsInfo']['tabs'][1]['containerid'] 
         except:
+            logging.error('containerid 抓取出错')
+            logging.error(traceback.format_exc())
             print(data)
     def crawl_user_weibo(self, uid):
         """
@@ -106,7 +137,7 @@ class WBSpider():
         """
         try:
             containerid = self.get_weibo_containerid(uid)
-            cur_page = 0
+            cur_page = 1
             while True:
                 logging.info(f'正在爬取 {uid} 的第 {cur_page+1} 页微博')
                 # https://m.weibo.cn/api/container/getIndex?containerid=1076031669879400&page=0
@@ -132,24 +163,27 @@ class WBSpider():
                     text = etree.tostring(selector, method="text", encoding="UTF-8").decode('utf-8')
                     img_emoji = selector.xpath("//span/img/@alt")
                     
-                    weibo = Weibo(text=text, mid=mblog['mid'], img_emoji=img_emoji)
-                    weibo.save()
+                    weibo = {'text': text, 'mid': mblog['mid'], 'img_emoji': img_emoji}
+                    self.ins_to_table('Weibo', weibo)
                 
                     # 抓取评论
                     self.crawl_weibo_comments(mblog['mid'])
 
                 cur_page += 1
         except:
+            logging.error('微博抓取出错')
+            logging.error(traceback.format_exc())
             print(data)
         
     def crawl_weibo_comments(self, mid, max=10):
         """
         将某一篇微博的评论爬取 10 页，并存储到 Comment 表中，将 mid（博文唯一标识）设置为传入的 mid
         """
+        # 特殊情况，是从 1 开始索引的
         try:
-            cur_page = 0
+            cur_page = 1
             for i in range(max):
-                logging.info(f'正在抓取 {mid} 的第 {cur_page+1} 页评论')
+                logging.info(f'正在抓取 {mid} 的第 {cur_page} 页评论')
                 # https://m.weibo.cn/api/comments/show?id=4384122253963002&page=0
                 url = COMMENT_URL.format(mid, cur_page)
                 data = self.get_data(url)
@@ -161,12 +195,14 @@ class WBSpider():
                     text = etree.tostring(selector, method="text", encoding="UTF-8").decode('utf-8')
                     img_emoji = selector.xpath("//span/img/@alt")
                     
-                    comment = Comment(cid=cid, mid=mid, text=text, img_emoji=img_emoji)
-                    comment.save()
+                    comment = {'cid': cid, 'mid': mid, 'text': text, 'img_emoji': img_emoji}
+                    self.ins_to_table('Comment', comment)
 
                 cur_page += 1
             logging.info(f'微博 {mid} 爬取完毕')
         except:
+            logging.error('评论抓取出错')
+            logging.error(traceback.format_exc())
             print(data)
 
     def crawl(self, uid):
@@ -184,22 +220,22 @@ class WBSpider():
         # 理论上会结束，实际上并不会结束
         while len(self.crawling) > 0:
             crawling_user = self.crawling.popleft()
-            adj_arr = self.crawl(crawling_user.uid)
-            crawling_user.delete()
-            logging.info(f'{crawling_user.uid}-{crawling_user.uname} 已从 Crawling 队列和数据库中移除')
-            crawled_new = Crawled(crawling_user.uid, crawling_user.uname)
-            crawled_new.save()
-            self.crawled.append(crawled_new)
-            logging.info(f'{crawling_user.uid}-{crawling_user.uname} 已加入到 Crawled 队列和数据库中')
+            adj_arr = self.crawl(crawling_user['uid'])
+            if adj_arr == None:
+                logging.error('不正常终止')
+                exit(-1)
+            self.del_from_table('Crawling', 'uid', crawling_user['uid'])
+            logging.info(f"{crawling_user['uid']}-{crawling_user['uname']} 已从 Crawling 队列和数据库中移除")
+            self.ins_to_table('Crawled', crawling_user)
+            logging.info(f'{crawling_user["uid"]}-{crawling_user["uname"]} 已加入到 Crawled 队列和数据库中')
             # 是 Following，并且没有被抓取过
             for v in adj_arr:
-                if Crawled().query().w_eq('uid', v.uid).count() == 0:
-                    crawling_user_new = Crawling(uid=v.uid, uname=v.uname)
-                    crawling_user_new.save()
+                if len(self.sel_from_table('Crawled', 'uid', v['uid'])) == 0:
+                    crawling_user_new = {'uid': v['uid'], 'uname': v['uname']}
+                    self.ins_to_table('Crawling', crawling_user_new)
                     self.crawling.append(crawling_user_new)
-                    logging.info(f'{v.uid}-{v.uname} 已加入到 Crawling 队列和数据库中')
+                    logging.info(f"{v['uid']}-{v['uname']} 已加入到 Crawling 队列和数据库中")
 
-        
 def signal_handler(sig, frame):
     print('You pressed Ctrl+C!')
     sys.exit(0)

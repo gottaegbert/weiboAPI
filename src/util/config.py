@@ -13,5 +13,12 @@ config = {
         # 注意: m.weibo.cn 比较特殊，查看微博并不需要登录，而看评论确实是需要的
         # 比如直接进这个网址 https://m.weibo.cn/detail/4389138709375153，往后多翻几条评论在 Network 的 XHR 里面可以看到 request headers 的 Cookie
         'COOKIE': 'ALF=1564734503; SCF=AuUY2ywPv1KKDsxqBgngDXYn7XTsKn_5p4iBblRihSxO8mUlZ5DB13iaxpPOY50QQzi_qq8HXRkR0NEl6MjJ-Ts.; SUB=_2A25wGOOGDeRhGeFP4lcU9SfJzD-IHXVT4o3OrDV6PUJbktBeLW_RkW1NQO_UfEy6P_rwgaJHDE-0R3sOldFws7cD; SUBP=0033WrSXqPxfM725Ws9jqgMF55529P9D9W5aERPgdESA6l4AaFTr3jGy5JpX5K-hUgL.FoMp1K-fSK.fS0e2dJLoIp7LxKML1KBLBKnLxKqL1hnLBoM7SKnRe0eRe0z0; SUHB=0laVFNbqkGjoCM; _T_WM=68656738488; WEIBOCN_FROM=1110106030; MLOGIN=1; XSRF-TOKEN=aa01d1; M_WEIBOCN_PARAMS=luicode%3D10000011%26lfid%3D1076031669879400%26uicode%3D20000061%26fid%3D4389138709375153%26oid%3D4389138709375153'
+    },
+    'mysql': {
+        'CONNECTION': {
+            'host': "localhost",
+            'user': 'upupming',
+            'charset': 'utf8mb4'
+        }
     }
 }
