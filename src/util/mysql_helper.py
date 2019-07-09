@@ -41,7 +41,7 @@ def create_table_if_not_exists():
     # Weibo
     MYCURSOR.execute("""
         create table if not exists Weibo (
-            mid varchar(255),
+            uid varchar(255),
             mid varchar(255) not null unique,
             text text CHARACTER SET utf8mb4 collate utf8mb4_unicode_520_ci,
             img_emoji json,
