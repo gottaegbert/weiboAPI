@@ -20,5 +20,11 @@ config = {
             'user': 'upupming',
             'charset': 'utf8mb4'
         }
+    },
+    'crawl': {
+        # 每两次请求之间等待 PERIOD 秒
+        'PERIOD': 4,
+        # 被封之后等待 5 分钟再次请求
+        'FORBID_PAUSE': 300
     }
 }
