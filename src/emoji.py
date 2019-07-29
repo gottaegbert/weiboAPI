@@ -6,7 +6,7 @@ from util.Bmob import *
 from util.table import *
 import time
 
-CUR_DIR = os.path.dirname(os.path.realpath('__file__')) + os.sep + 'src/'
+CUR_DIR = os.path.dirname(os.path.realpath('__file__')) + os.sep
 BmobSDK.setup(config["bmob"]["APP_ID"], config["bmob"]["REST_API_KEY"])
 
 def get_img_emojis():
